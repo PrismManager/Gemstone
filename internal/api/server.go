@@ -29,7 +29,7 @@ func NewServer(cfg *config.Config, manager *process.Manager, collector *stats.Co
 
 	router := gin.New()
 	router.Use(gin.Recovery())
-	router.Use(gin.Logger())
+	// router.Use(gin.Logger())
 
 	s := &Server{
 		config:    cfg,

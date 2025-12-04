@@ -30,6 +30,7 @@ release/
 .gem/
 tmp/
 dist/
+development/
 
 # IDE files
 .idea/
