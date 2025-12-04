@@ -1,0 +1,17 @@
+# Gemstone Configuration File
+# Default configuration for gemstone process manager
+
+api:
+  enabled: true
+  port: 9876
+  host: "127.0.0.1"
+  # Uncomment to enable authentication
+  # auth_token: "your-secret-token"
+  enable_cors: false
+
+logging:
+  max_size: 10        # Max log file size in MB
+  max_backups: 5      # Number of backup files to keep
+  max_age: 30         # Max age of log files in days
+  compress: true      # Compress rotated files
+  directory: "/var/log/gemstone"

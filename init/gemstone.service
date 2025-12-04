@@ -1,0 +1,33 @@
+[Unit]
+Description=Gemstone Process Manager Daemon
+Documentation=https://github.com/PrismManager/gemstone
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/gemstoned
+ExecReload=/bin/kill -HUP $MAINPID
+Restart=always
+RestartSec=5
+LimitNOFILE=65536
+LimitNPROC=65536
+
+# Security hardening
+NoNewPrivileges=false
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/var/lib/gemstone /var/log/gemstone /run/gemstone /etc/gemstone
+PrivateTmp=true
+
+# Create runtime directory
+RuntimeDirectory=gemstone
+RuntimeDirectoryMode=0755
+
+# Create state and log directories
+StateDirectory=gemstone
+StateDirectoryMode=0755
+LogsDirectory=gemstone
+LogsDirectoryMode=0755
+
+[Install]
+WantedBy=multi-user.target

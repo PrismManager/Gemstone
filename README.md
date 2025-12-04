@@ -1,165 +1,215 @@
-# Gem
+# Gemstone (gem) - Process Manager for Linux
 
-A lightweight, fast process manager for Linux/Ubuntu systems written in Go. Gem allows you to manage processes, view tasks, access shells, automate scripts, and view logs with ease.
+A modern, lightweight process manager for Linux servers written in Go. Similar to PM2 but with native performance and simpler deployment.
 
 ## Features
 
-- Start, stop, and restart processes
-- Monitor process status and resource usage
-- Interactive shell access to running processes
-- Automated scripts for process management
-- Comprehensive logging system
-- Cluster support for distributed environments
-- Configuration via `.gem` files (similar to Docker's configuration)
-- API for integration with other applications
-- Lightweight and fast performance
+- **Process Management**: Start, stop, restart, and delete processes
+- **Auto-restart**: Automatically restart crashed processes
+- **Auto-start on boot**: Processes start automatically after system reboot
+- **Logging**: Separate stdout/stderr logs with rotation support
+- **Resource Monitoring**: CPU, memory, threads, and I/O statistics
+- **REST API**: Full API for remote management and web interfaces
+- **Historical Stats**: Time-series data for charts and monitoring
+- **Systemd Integration**: Native systemd service management
 
-## Installation
+## Quick Start
+
+### Installation
 
 ```bash
 # Clone the repository
-git clone https://github.com/prismmanager/gem.git
-cd gem
+git clone https://github.com/PrismManager/gemstone.git
+cd gemstone
 
-# Build the application
-go build -o gem
-
-# Install globally (optional)
-sudo mv gem /usr/local/bin/
-```
-
-Alternatively, you can use the provided scripts:
-
-```bash
-# Using the development script
-./scripts/dev.sh build
-sudo ./scripts/dev.sh install
-
-# Using make
+# Build
 make build
+
+# Install (requires root)
 sudo make install
+
+# Start the daemon
+sudo systemctl start gemstone
+
+# Enable auto-start on boot
+sudo systemctl enable gemstone
 ```
 
-## Usage
-
-### Basic Commands
+### Basic Usage
 
 ```bash
-# Start a new process
-gem start <process-name> --cmd="<command>"
+# Start a process
+gem start 'node app.js' --name myapp
 
-# Start a process using a .gem configuration file
-gem start -f config.gem
+# Start with options
+gem start 'python server.py' --name api --cwd /opt/app --auto-restart
 
-# List all running processes
+# List all processes
 gem list
 
-# View process details
-gem info <process-name>
+# View process logs
+gem logs myapp
+
+# View specific log type
+gem logs myapp --type stderr
 
 # Stop a process
-gem stop <process-name>
+gem stop myapp
 
 # Restart a process
-gem restart <process-name>
+gem restart myapp
 
-# Access process shell
-gem shell <process-name>
+# Delete a process
+gem delete myapp
 
-# View process logs
-gem logs <process-name>
+# Show process details
+gem status myapp
+
+# Show system info
+gem info
+
+# Check daemon status
+gem daemon status
 ```
 
-### Configuration
+## Project Structure
 
-Gem uses `.gem` files for process configuration. Example:
+```
+gemstone/
+├── cmd/
+│   ├── gem/          # CLI binary
+│   └── gemstoned/    # Daemon binary
+├── internal/
+│   ├── api/          # REST API server
+│   ├── cli/          # CLI commands and client
+│   ├── config/       # Configuration handling
+│   ├── daemon/       # Daemon logic
+│   ├── logger/       # Process logging
+│   ├── process/      # Process management
+│   ├── stats/        # Statistics collection
+│   └── types/        # Shared types
+├── configs/          # Configuration templates
+├── init/             # Systemd service files
+├── scripts/          # Install/uninstall scripts
+├── Makefile
+└── README.md
+```
+
+## Configuration
+
+Configuration file: `/etc/gemstone/config.yaml`
 
 ```yaml
-name: my-app
-cmd: node app.js
-cwd: /path/to/app
-env:
-  NODE_ENV: production
-  PORT: 3000
-restart: always
-max_restarts: 10
-cluster:
-  instances: 4
-  mode: fork
-log:
-  stdout: ./logs/out.log
-  stderr: ./logs/error.log
-  rotate: true
-  max_size: 10M
-  max_files: 5
+api:
+  enabled: true
+  port: 9876
+  host: "127.0.0.1"
+  auth_token: ""  # Set for authentication
+  enable_cors: false
+
+logging:
+  max_size: 10        # MB
+  max_backups: 5
+  max_age: 30         # days
+  compress: true
+  directory: "/var/log/gemstone"
 ```
 
-Check the `examples` directory for more configuration examples.
+## REST API
 
-## API Usage
+The daemon exposes a REST API for remote management:
 
-Gem provides a REST API for integration with other applications:
+### Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/v1/health` | Health check |
+| GET | `/api/v1/system` | System information |
+| GET | `/api/v1/system/stats` | Current system stats |
+| GET | `/api/v1/system/stats/history` | Historical system stats |
+| GET | `/api/v1/processes` | List all processes |
+| POST | `/api/v1/processes` | Start a new process |
+| GET | `/api/v1/processes/:id` | Get process details |
+| DELETE | `/api/v1/processes/:id` | Delete a process |
+| POST | `/api/v1/processes/:id/stop` | Stop a process |
+| POST | `/api/v1/processes/:id/restart` | Restart a process |
+| GET | `/api/v1/processes/:id/stats` | Get process stats |
+| GET | `/api/v1/processes/:id/stats/history` | Historical process stats |
+| GET | `/api/v1/processes/:id/logs` | Get process logs |
+
+### Example: Start a process via API
 
 ```bash
-# Start the API server
-gem api start
-
-# API is available at http://localhost:3456 by default
+curl -X POST http://localhost:9876/api/v1/processes \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "myapp",
+    "command": "node",
+    "args": ["app.js"],
+    "work_dir": "/opt/myapp",
+    "auto_start": true,
+    "auto_restart": true,
+    "max_restarts": 10
+  }'
 ```
 
-## Development
+### Authentication
+
+Set `auth_token` in config to enable authentication:
+
+```yaml
+api:
+  auth_token: "your-secret-token"
+```
+
+Then include the token in requests:
+
+```bash
+curl -H "Authorization: Bearer your-secret-token" http://localhost:9876/api/v1/processes
+```
+
+## Directories
+
+| Path | Description |
+|------|-------------|
+| `/etc/gemstone/` | Configuration files |
+| `/var/lib/gemstone/` | Process data (saved state) |
+| `/var/log/gemstone/` | Process logs |
+| `/run/gemstone/` | Runtime files (socket, PID) |
+
+## Building from Source
 
 ### Requirements
 
-- Go 1.21 or higher
-- golangci-lint (for linting)
+- Go 1.21 or later
+- Make
 
-### Development Scripts
-
-The project includes development scripts to make common tasks easier:
+### Build
 
 ```bash
-# Build the binary
-./scripts/dev.sh build
+# Download dependencies
+make deps
 
-# Run tests
-./scripts/dev.sh test
-
-# Run linter
-./scripts/dev.sh lint
-
-# Clean build artifacts
-./scripts/dev.sh clean
-
-# Build and run
-./scripts/dev.sh run [args]
-```
-
-You can also use the Makefile:
-
-```bash
-# Build the binary
+# Build both binaries
 make build
 
 # Run tests
 make test
 
-# Run linter
-make lint
-
-# Build for multiple platforms
-make release
+# Format code
+make fmt
 ```
 
-### CI/CD
+## Web Manager
 
-The project uses GitHub Actions for continuous integration and deployment. The workflow includes:
+The web manager is a separate project that provides a web interface for managing processes. It communicates with gemstone via the REST API.
 
-- Building the application
-- Running tests
-- Linting the code
-- Creating releases for multiple platforms
+See: [gemstone-web](https://github.com/PrismManager/gemstone-web) (coming soon)
 
 ## License
 
-MIT
+MIT License - see [LICENSE](LICENSE) for details.
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.

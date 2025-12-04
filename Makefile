@@ -1,71 +1,116 @@
-.PHONY: build test lint clean install uninstall run dev check
+.PHONY: build build-cli build-daemon install uninstall clean test fmt lint
 
-# Build settings
-BINARY_NAME=gem
-VERSION=$(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
-BUILD_TIME=$(shell date -u '+%Y-%m-%d %H:%M:%S')
-LDFLAGS=-ldflags "-X main.Version=$(VERSION) -X 'main.BuildTime=$(BUILD_TIME)'"
+# Variables
+VERSION ?= 0.1.0
+BUILD_TIME := $(shell date -u '+%Y-%m-%d_%H:%M:%S')
+GIT_COMMIT := $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+LDFLAGS := -ldflags "-X main.Version=$(VERSION) -X main.BuildTime=$(BUILD_TIME) -X main.GitCommit=$(GIT_COMMIT)"
 
-# Default target
+# Directories
+DIST_DIR := dist
+CONFIG_DIR := /etc/gemstone
+DATA_DIR := /var/lib/gemstone
+LOG_DIR := /var/log/gemstone
+RUN_DIR := /run/gemstone
+
+# Build targets
 all: build
 
-# Build the binary
-build:
-	@echo "Building $(BINARY_NAME)..."
-	@go build $(LDFLAGS) -o $(BINARY_NAME)
-	@echo "Build complete: $(BINARY_NAME)"
+build: build-cli build-daemon
 
-# Run tests
-test:
-	@echo "Running tests..."
-	@go test -v ./...
+build-cli:
+	@echo "Building gem CLI..."
+	@mkdir -p $(DIST_DIR)
+	go build $(LDFLAGS) -o $(DIST_DIR)/gem ./cmd/gem
 
-# Run linter
-lint:
-	@echo "Running linter..."
-	@if ! command -v golangci-lint &> /dev/null; then \
-		echo "golangci-lint not found, installing..."; \
-		curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $$(go env GOPATH)/bin v1.54.2; \
+build-daemon:
+	@echo "Building gemstoned daemon..."
+	@mkdir -p $(DIST_DIR)
+	go build $(LDFLAGS) -o $(DIST_DIR)/gemstoned ./cmd/gemstoned
+
+# Development builds
+dev: 
+	go build -o $(DIST_DIR)/gem ./cmd/gem
+	go build -o $(DIST_DIR)/gemstoned ./cmd/gemstoned
+
+# Install (requires root)
+install: build
+	@echo "Installing gemstone..."
+	@install -d $(CONFIG_DIR)
+	@install -d $(DATA_DIR)
+	@install -d $(LOG_DIR)
+	@install -m 755 $(DIST_DIR)/gem /usr/local/bin/gem
+	@install -m 755 $(DIST_DIR)/gemstoned /usr/local/bin/gemstoned
+	@if [ ! -f $(CONFIG_DIR)/config.yaml ]; then \
+		install -m 644 configs/config.yaml $(CONFIG_DIR)/config.yaml; \
 	fi
-	@golangci-lint run ./...
+	@install -m 644 init/gemstone.service /etc/systemd/system/gemstone.service
+	@systemctl daemon-reload
+	@echo "Gemstone installed successfully!"
+	@echo ""
+	@echo "To start the daemon:"
+	@echo "  sudo systemctl start gemstone"
+	@echo ""
+	@echo "To enable auto-start on boot:"
+	@echo "  sudo systemctl enable gemstone"
+
+# Uninstall (requires root)
+uninstall:
+	@echo "Uninstalling gemstone..."
+	@systemctl stop gemstone 2>/dev/null || true
+	@systemctl disable gemstone 2>/dev/null || true
+	@rm -f /etc/systemd/system/gemstone.service
+	@systemctl daemon-reload
+	@rm -f /usr/local/bin/gem
+	@rm -f /usr/local/bin/gemstoned
+	@echo "Gemstone uninstalled."
+	@echo "Note: Configuration and data directories were not removed:"
+	@echo "  $(CONFIG_DIR)"
+	@echo "  $(DATA_DIR)"
+	@echo "  $(LOG_DIR)"
 
 # Clean build artifacts
 clean:
-	@echo "Cleaning build artifacts..."
-	@rm -f $(BINARY_NAME)
+	@rm -rf $(DIST_DIR)
 	@go clean
-	@echo "Clean complete"
 
-# Install the binary
-install: build
-	@echo "Installing $(BINARY_NAME)..."
-	@cp $(BINARY_NAME) /usr/local/bin/
-	@echo "Installed $(BINARY_NAME) to /usr/local/bin/$(BINARY_NAME)"
+# Run tests
+test:
+	go test -v ./...
 
-# Uninstall the binary
-uninstall:
-	@echo "Uninstalling $(BINARY_NAME)..."
-	@rm -f /usr/local/bin/$(BINARY_NAME)
-	@echo "Uninstalled $(BINARY_NAME) from /usr/local/bin/$(BINARY_NAME)"
+# Format code
+fmt:
+	go fmt ./...
 
-# Run the binary
-run: build
-	@echo "Running $(BINARY_NAME)..."
-	@./$(BINARY_NAME)
+# Run linter
+lint:
+	@if command -v golangci-lint >/dev/null 2>&1; then \
+		golangci-lint run; \
+	else \
+		echo "golangci-lint not installed, skipping..."; \
+	fi
 
-# Build for multiple platforms
-release:
-	@echo "Building for multiple platforms..."
-	@mkdir -p release
-	@GOOS=linux GOARCH=amd64 go build $(LDFLAGS) -o release/$(BINARY_NAME)-linux-amd64
-	@GOOS=linux GOARCH=arm64 go build $(LDFLAGS) -o release/$(BINARY_NAME)-linux-arm64
-	@GOOS=darwin GOARCH=amd64 go build $(LDFLAGS) -o release/$(BINARY_NAME)-darwin-amd64
-	@GOOS=darwin GOARCH=arm64 go build $(LDFLAGS) -o release/$(BINARY_NAME)-darwin-arm64
-	@echo "Release builds complete in release/ directory"
+# Download dependencies
+deps:
+	go mod download
+	go mod tidy
 
-dev: build install check
+# Help
+help:
+	@echo "Gemstone Process Manager - Build System"
 	@echo ""
-	@echo "Finished building and installing $(BINARY_NAME)"
-
-check: 
-	@$(BINARY_NAME) 
+	@echo "Usage: make [target]"
+	@echo ""
+	@echo "Targets:"
+	@echo "  build        Build both CLI and daemon"
+	@echo "  build-cli    Build only the CLI (gem)"
+	@echo "  build-daemon Build only the daemon (gemstoned)"
+	@echo "  dev          Development build (no optimizations)"
+	@echo "  install      Install gemstone (requires root)"
+	@echo "  uninstall    Uninstall gemstone (requires root)"
+	@echo "  clean        Clean build artifacts"
+	@echo "  test         Run tests"
+	@echo "  fmt          Format code"
+	@echo "  lint         Run linter"
+	@echo "  deps         Download dependencies"
+	@echo "  help         Show this help message"
