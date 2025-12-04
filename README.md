@@ -43,56 +43,6 @@ gem start 'node app.js' --name myapp
 
 # Start with options
 gem start 'python server.py' --name api --cwd /opt/app --auto-restart
-
-# List all processes
-gem list
-
-# View process logs
-gem logs myapp
-
-# View specific log type
-gem logs myapp --type stderr
-
-# Stop a process
-gem stop myapp
-
-# Restart a process
-gem restart myapp
-
-# Delete a process
-gem delete myapp
-
-# Show process details
-gem status myapp
-
-# Show system info
-gem info
-
-# Check daemon status
-gem daemon status
-```
-
-## Project Structure
-
-```
-gemstone/
-├── cmd/
-│   ├── gem/          # CLI binary
-│   └── gemstoned/    # Daemon binary
-├── internal/
-│   ├── api/          # REST API server
-│   ├── cli/          # CLI commands and client
-│   ├── config/       # Configuration handling
-│   ├── daemon/       # Daemon logic
-│   ├── logger/       # Process logging
-│   ├── process/      # Process management
-│   ├── stats/        # Statistics collection
-│   └── types/        # Shared types
-├── configs/          # Configuration templates
-├── init/             # Systemd service files
-├── scripts/          # Install/uninstall scripts
-├── Makefile
-└── README.md
 ```
 
 ## Configuration
