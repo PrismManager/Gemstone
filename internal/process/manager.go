@@ -22,7 +22,7 @@ type Manager struct {
 
 // NewManager creates a new process manager
 func NewManager(cfg *config.Config, dataDir, logDir string) (*Manager, error) {
-	// Ensure directories exist
+	// Make sure that the directories exist
 	for _, dir := range []string{dataDir, logDir} {
 		if err := os.MkdirAll(dir, 0755); err != nil {
 			return nil, fmt.Errorf("failed to create directory %s: %w", dir, err)

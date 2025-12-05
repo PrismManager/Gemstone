@@ -59,7 +59,7 @@ func New() (*Daemon, error) {
 func (d *Daemon) Run() error {
 	d.startedAt = time.Now()
 
-	// Ensure socket directory exists
+	// Make sure that the socket directory exists
 	socketDir := filepath.Dir(d.socketPath)
 	if err := os.MkdirAll(socketDir, 0755); err != nil {
 		return fmt.Errorf("failed to create socket directory: %w", err)
