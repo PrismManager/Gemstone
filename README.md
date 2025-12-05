@@ -22,9 +22,6 @@ A modern, lightweight process manager for Linux servers written in Go. Similar t
 git clone https://github.com/PrismManager/gemstone.git
 cd gemstone
 
-# Build
-make build
-
 # Install (requires root)
 sudo make install
 

@@ -74,13 +74,13 @@ install: build
 	fi
 	@install -m 644 init/gemstone.service /etc/systemd/system/gemstone.service
 	@systemctl daemon-reload
-	@printf "$(GREEN)Gemstone installed successfully!$(RESET)"
-	@printf ""
+	@printf "$(GREEN)Gemstone installed successfully!$(RESET)\n"
+	@printf "\n"
 	@printf "$(CYAN)To start the daemon:$(RESET)"
-	@printf "  sudo systemctl start gemstone"
-	@printf ""
+	@printf "  sudo systemctl start gemstone\n"
+	@printf "\n"
 	@printf "$(CYAN)To enable auto-start on boot:$(RESET)"
-	@printf "  sudo systemctl enable gemstone"
+	@printf "  sudo systemctl enable gemstone\n"
 
 # Uninstall (requires root)
 uninstall:
