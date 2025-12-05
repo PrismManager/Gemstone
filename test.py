@@ -140,8 +140,8 @@ class TestHandler(BaseHTTPRequestHandler):
 
 def run_server():
     try:
-        server = HTTPServer(('localhost', 8080), TestHandler)
-        logger.info("HTTP server started on http://localhost:8080")
+        server = HTTPServer(('localhost', 9875), TestHandler)
+        logger.info("HTTP server started on http://localhost:9875")
         server.serve_forever()
     except Exception as e:
         logger.error(f"HTTP server error: {e}")
